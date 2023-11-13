@@ -7,24 +7,33 @@ tasks_db = []
 task_id_counter = 1
 
 
-@app.post("/v1/tasks/")
+@app.post("/v1/tasks")
 async def create_task(req: Request):
     global task_id_counter
     global tasks_db
     data = await req.json()
     new_title = data.get("title")
-    new_task = Task(title= new_title, id = task_id_counter)
-    task_id_counter += 1
-    tasks_db.append(new_task)
-    return JSONResponse(content= {"id" : new_task.id}, status_code= 201)
+    if new_title:
+        new_task = Task(title= new_title, id = task_id_counter)
+        task_id_counter += 1
+        tasks_db.append(new_task)
+        return JSONResponse(content= {"id" : new_task.id}, status_code= 201)
+    else:
+        tasks = data.get('tasks')
+        response = []
+        for i in tasks:
+            new_task = Task(title= i["title"], id = task_id_counter, is_completed= i["is_completed"])
+            response.append({"id" : task_id_counter})
+            task_id_counter += 1
+            tasks_db.append(new_task)
+       
+        return JSONResponse(content = {"tasks" : response}, status_code= 201)
 
 
-@app.get("/v1/tasks/")
+@app.get("/v1/tasks")
 def list_tasks():
     
     return {"tasks" : tasks_db}
-
-
 
 @app.get("/v1/tasks/{task_id}")
 async def get_task(task_id: int):
@@ -39,9 +48,23 @@ async def get_task(task_id: int):
 
 @app.delete("/v1/tasks/{task_id}")
 async def delete_task(task_id: int):
+
     for i in tasks_db:
         if i.id == task_id:
             tasks_db.remove(i)
+    return JSONResponse(content= None,  status_code= 204)
+
+#bulk delete
+@app.delete("/v1/tasks")
+async def bulk_delete_task(req : Request):
+    data = await req.json()
+    tasks = data.get("tasks")
+    to_delete = [i['id'] for i in tasks]
+    print(to_delete)
+    for i in to_delete:
+        for j in tasks_db:
+            if j.id == i:
+                tasks_db.remove(j)
     return JSONResponse(content= None,  status_code= 204)
 
 
